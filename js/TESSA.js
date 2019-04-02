@@ -11,6 +11,8 @@ app.renderer.view.style.display = "block";
 app.renderer.autoResize = true;
 app.renderer.resize(window.innerWidth, window.innerHeight);
 
+bc = new BroadcastChannel("TESSA");
+
 // Layout.
 
 // Globals.
@@ -92,6 +94,11 @@ document.body.onmousemove = function (e) {
   mousePosOldY = e.clientY;
 }
 
+bc.onmessage = function (ev) { 
+  console.log(ev); 
+  CUR_JD = ev.data.jd;
+}
+
 var time_old, delta;
 function animLoop(time) {
   // Calc delta.
@@ -104,7 +111,7 @@ function animLoop(time) {
   requestAnimationFrame(animLoop);
 
   CUR_JD++;
-  JDlabel.text = '//' + CUR_JD.toString().padEnd(14, '0');
+  JDlabel.text = '//' + CUR_JD.toFixed(6).padStart(14, '0');
 
   map.draw(mapcontainer);
 }

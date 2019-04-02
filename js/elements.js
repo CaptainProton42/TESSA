@@ -54,7 +54,11 @@ var BodyType = {
     PLANET: 0,
     ASTEROID: 1,
     STATION: 2,
-    ALIEN: 3,
+    UN: 3,
+    MCRN: 4,
+    OPA: 5,
+    INDEPENDENT: 6,
+    ALIEN: 7
 };
 
 class StellarBody {
