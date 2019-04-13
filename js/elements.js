@@ -14,6 +14,24 @@ function elem_to_cart(elements, t) {
     return [X, Y, Z];
 }
 
+function plotRoute(start_coord, dest_body, acc) {
+    var step = 0.00001;
+    for (var w = 0; w < 2 * Math.PI; w += step)
+    {
+        var t_body = dest_body.elements.period * w / 2 / Math.PI;
+        var dest_coord = elem_to_cart(dest_body.elements, w / 2 / Math.PI * dest_body.elements.period + CUR_JD);
+        var s_ship = Math.sqrt((dest_coord[0] - start_coord[0])**2
+                              + (dest_coord[1] - start_coord[1])**2
+                              + (dest_coord[2] - start_coord[2])**2);
+        var t_ship = Math.sqrt(4 / acc * s_ship);
+
+        if (Math.abs(t_body - t_ship) < 1)
+        {
+            return [s_ship, t_ship, dest_coord];
+        }
+    }
+}
+
 class TextLabel extends PIXI.Container{
     constructor(text = "", position = new PIXI.Point(0, 0), fontsize=20, color = 0xffffff) {
         super();

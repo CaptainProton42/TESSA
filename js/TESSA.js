@@ -11,7 +11,8 @@ app.renderer.view.style.display = "block";
 app.renderer.autoResize = true;
 app.renderer.resize(window.innerWidth, window.innerHeight);
 
-bc = new BroadcastChannel("TESSA");
+bcMetrics = new BroadcastChannel("tessa-metrics"); // Constantly broadcasts astrometric information.
+bcCommands = new BroadcastChannel("tessa-cmd"); // For gm console commands.
 
 // Layout.
 
@@ -94,13 +95,18 @@ document.body.onmousemove = function (e) {
   mousePosOldY = e.clientY;
 }
 
-bc.onmessage = function (ev) { 
-  console.log(ev); 
-  CUR_JD = ev.data.jd;
+
+bcCommands.onmessage = function (ev) {
+  console.log(ev.data)
+  if (ev.data.cmd == "plot") {
+    var route = plotRoute(map.bodies[ev.data.start].getPos(CUR_JD), map.bodies[ev.data.dest], ev.data.acc);
+    console.log(route);
+  }
 }
 
 var time_old, delta;
 function animLoop(time) {
+  bcMetrics.postMessage(map.bodies);
   // Calc delta.
   delta = time - time_old;
   time_old = time;
