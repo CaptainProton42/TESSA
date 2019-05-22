@@ -14,22 +14,11 @@ function elem_to_cart(elements, t) {
     return [X, Y, Z];
 }
 
-function plotRoute(start_coord, dest_body, acc) {
-    var step = 0.00001;
-    for (var w = 0; w < 2 * Math.PI; w += step)
-    {
-        var t_body = dest_body.elements.period * w / 2 / Math.PI;
-        var dest_coord = elem_to_cart(dest_body.elements, w / 2 / Math.PI * dest_body.elements.period + CUR_JD);
-        var s_ship = Math.sqrt((dest_coord[0] - start_coord[0])**2
-                              + (dest_coord[1] - start_coord[1])**2
-                              + (dest_coord[2] - start_coord[2])**2);
-        var t_ship = Math.sqrt(4 / acc * s_ship);
-
-        if (Math.abs(t_body - t_ship) < 1)
-        {
-            return [s_ship, t_ship, dest_coord];
-        }
-    }
+// Converts a position in map coordinates to a pixel position on screen
+function pos_to_pix(pos, map) {
+    var xpix =  map.xpos[0] +  ( pos[0] - map._xlims[0] ) * (map.xpos[1] - map.xpos[0]) / (map._xlims[1] - map._xlims[0]);
+    var ypix =  map.ypos[1] - ( pos[1] - map._ylims[0] ) * (map.ypos[1] - map.ypos[0]) / (map._ylims[1] - map._ylims[0]);
+    return [xpix, ypix]
 }
 
 class TextLabel extends PIXI.Container{
@@ -108,19 +97,23 @@ class Zone {
 }
 
 class SystemMap {
-    constructor(xmin, ymin, xmax, ymax) {
-        // Display
+    constructor(xmin, ymin, xmax, ymax, container) {
+        // Position auf dem Canvas
         this.xpos = [xmin, xmax];
         this.ypos = [ymin, ymax];
         // Data
         this.xlims = [-10, 10]
         this._bodies = [];
         this._zones = [];
+        this._routes = [];
         // Objects.
         this._markers = [];
         this._zoneMarkers = [];
+        this._routeMarkers = [];
         this._grid = new PIXI.Container();
         this._labels = new PIXI.Container();
+        
+        this.container = container;
     }
 
     // Setter (keep aspect ratio and center)
@@ -173,12 +166,12 @@ class SystemMap {
             graphics.drawCircle(0, 0, 10);
             marker.addChild(graphics);
             var label = new TextLabel(bodies[i].name, new PIXI.Point(10, -30), 20);
-            let coord = bodies[i].getPos(CUR_JD);
             var coordLabel = new TextLabel('+00.00//+00.00//+00.00',
                                            new PIXI.Point(15, -10), 10, 0x333333);
             marker.addChild(label);
             marker.addChild(coordLabel);
             this._markers[i] = marker;
+            this.container.addChild(this._markers[i]);
         }
     }
 
@@ -193,6 +186,7 @@ class SystemMap {
             graphics.drawCircle(0, 0, r)
             zoneMarker.addChild(graphics);
             this._zoneMarkers[i] = zoneMarker;
+            this.container.addChild(this._zoneMarkers[i]);
         }
     }
 
@@ -204,8 +198,23 @@ class SystemMap {
         return this._bodies;
     }
 
+    addRoute(route) {
+        this._routes.push(route);
+        let routeMarker = new PIXI.Container();
+        let graphics = new PIXI.Graphics();
+        routeMarker.addChild(graphics);
+        this._routeMarkers.push(routeMarker);
+        this.container.addChild(this._routeMarkers[this._routeMarkers.length-1])
+    }
+
+    deleteRoute(i) {
+        this._routeMarkers[i].children[0].clear();
+        this._routes.splice(i);
+        this._routeMarkers.splice(i);
+    }
+
     // Draws map with contents on container
-    draw(container) {
+    draw() {
         // Cleanup.
         for (var i = this._grid.children.length - 1; i >= 0; i--)
         {
@@ -250,30 +259,47 @@ class SystemMap {
 
         this._grid.addChild(graphics);
         this._grid.zIndex = -999;
-        container.addChild(this._grid);
+        this.container.addChild(this._grid);
         this._labels.zIndex = -999;
-        container.addChild(this._labels);
+        this.container.addChild(this._labels);
 
-        // Place bodies.
+        // Draw bodies.
         for (var i = 0; i < this._markers.length; i++)
         {
-            var xpix =  this.xpos[0] +  ( this.bodies[i].getMapPos(CUR_JD)[0] - this._xlims[0] ) * (this.xpos[1] - this.xpos[0]) / (this._xlims[1] - this._xlims[0]);
-            var ypix =  this.ypos[1] - ( this.bodies[i].getMapPos(CUR_JD)[1] - this._ylims[0] ) * (this.ypos[1] - this.ypos[0]) / (this._ylims[1] - this._ylims[0]);
-            this._markers[i].position = new PIXI.Point(xpix, ypix);
+            let pix = pos_to_pix(this._bodies[i].getMapPos(CUR_JD), map);
+            this._markers[i].position = new PIXI.Point(pix[0], pix[1]);
             let coord = this.bodies[i].getPos(CUR_JD);
             this._markers[i].children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
-
-            container.addChild(this._markers[i]);
         }
 
+        // Draw zones.
         for (var i = 0; i < this._zoneMarkers.length; i++)
         {
-            var xpix =  this.xpos[0] +  ( this._zones[i].center[0] - this._xlims[0] ) * (this.xpos[1] - this.xpos[0]) / (this._xlims[1] - this._xlims[0]);
-            var ypix =  this.ypos[1] - ( this._zones[i].center[1] - this._ylims[0] ) * (this.ypos[1] - this.ypos[0]) / (this._ylims[1] - this._ylims[0]);
-            this._zoneMarkers[i].position = new PIXI.Point(xpix, ypix);
-            container.addChild(this._zoneMarkers[i]);           
+            let pix = pos_to_pix(this._zones[i].center, this);          
+            this._zoneMarkers[i].position = new PIXI.Point(pix[0], pix[1]);                      
+        }
+
+        // Draw routes.
+        for (var i = 0; i < this._routes.length; i++)
+        {
+            let start_pix = pos_to_pix(this._routes[i].startCoordinate2D, this);
+            let dest_pix = pos_to_pix(this._routes[i].destinationCoordinate2D, this);
+
+            var graphics =  this._routeMarkers[i].children[0]
+            graphics.clear()
+
+            graphics.lineStyle(2, 0xffffff)
+                .moveTo(start_pix[0], start_pix[1])
+                .lineTo(dest_pix[0], dest_pix[1]);
+
+            let starship_pos = pos_to_pix([this._routes[i].get_pos()[0], this._routes[i].get_pos()[1]], this);
+            graphics.drawCircle(starship_pos[0], starship_pos[1], 10);
+
+            if (this._routes[i].destinationReached) {
+                this.deleteRoute(i);
+            }
         }
     }
 }

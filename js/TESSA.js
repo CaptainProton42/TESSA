@@ -18,6 +18,7 @@ bcCommands = new BroadcastChannel("tessa-cmd"); // For gm console commands.
 
 // Globals.
 var CUR_JD = 2542944.500000;
+var DAYS_PER_SECOND = 1;
 
 // Menu Bar
 menubar = new PIXI.Container();
@@ -53,15 +54,14 @@ menubar.addChild(FPS);
 menubar.addChild(JDlabel);
 
 // Map
-map = new SystemMap(0, 75, window.innerWidth, window.innerHeight);
+var mapcontainer = new PIXI.Container();
+map = new SystemMap(0, 75, window.innerWidth, window.innerHeight, mapcontainer);
 map.xlims = [-10, 10];
 map.bodies = [Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune,
               Ceres];
 
 belt = new Zone("Belt", [0, 0], 2.0, 3.4);
 map.zones = [belt];
-
-var mapcontainer = new PIXI.Container();
 
 app.stage.addChild(menubar);
 app.stage.addChild(mapcontainer);
@@ -100,26 +100,27 @@ bcCommands.onmessage = function (ev) {
   console.log(ev.data)
   if (ev.data.cmd == "plot") {
     var route = plotRoute(map.bodies[ev.data.start].getPos(CUR_JD), map.bodies[ev.data.dest], ev.data.acc);
+    map.addRoute(route);
     console.log(route);
   }
 }
 
 var time_old, delta;
+time_old = 0;
 function animLoop(time) {
   bcMetrics.postMessage(map.bodies);
   // Calc delta.
   delta = time - time_old;
-  time_old = time;
   FPS.text = delta.toFixed(1).padStart(5, '0') + '//' + (1000 / delta).toFixed(0).padStart(3, '0');
 
+  CUR_JD += DAYS_PER_SECOND * delta/1000;
+  JDlabel.text = '//' + CUR_JD.toFixed(6).padStart(14, '0');
+
+  map.draw();
+  time_old = time;
   //Call this `gameLoop` function on the next screen refresh
   //(which happens 60 times per second)
   requestAnimationFrame(animLoop);
-
-  CUR_JD++;
-  JDlabel.text = '//' + CUR_JD.toFixed(6).padStart(14, '0');
-
-  map.draw(mapcontainer);
 }
 
 //Start the loop
