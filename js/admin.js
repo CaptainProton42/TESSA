@@ -82,9 +82,15 @@ function plotRoute()
 {  
     var select_start = document.getElementById("select_start");
     var select_dest = document.getElementById("select_dest");
+    var input_start_current_pos = document.getElementById("input_start_current_pos");
     var input_acc = document.getElementById("input_acc");
 
-    var start = select_start.selectedIndex;
+    var start
+    if (input_start_current_pos.checked == true) {
+        start = -1;
+    } else {
+        start = select_start.selectedIndex;
+    }
     var dest = select_dest.selectedIndex;
     var acc = parseFloat(input_acc.value);
 

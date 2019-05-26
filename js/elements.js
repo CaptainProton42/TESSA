@@ -1,15 +1,27 @@
 function elem_to_cart(elements, t) {
     let delta_t = t - elements.Tp;
-    let w = 2 * Math.PI * delta_t / elements.period;
-    while (w > 2 * Math.PI) {
-        w -= 2 * Math.PI;
+    let M = elements.M + delta_t + 2 * Math.PI * delta_t / elements.period;
+    while (M > 2 * Math.PI) {
+        M -= 2 * Math.PI;
     }
 
-    r = elements.a * (1 - elements.e**2) / (1 + elements.e * Math.cos(elements.nu));
+    // Iterative solution of Kepler's equation
+    var F = E - elements.e * Math.sin(E) - M
+    var E = M;
+    var j = 0;
+    while (Math.abs(F) > 0.0001 && j < 100) {
+        E = E - F/(1 - elements.e * Math.cos(E));
+        F = E - elements.e * Math.sin(E) - M;
+        j++
+    }
 
-    X = r * (Math.cos(elements.Om) * Math.cos(w + elements.nu) - Math.sin(elements.Om) * Math.sin(w + elements.nu) * Math.cos(elements.i));
-    Y = r * (Math.sin(elements.Om) * Math.cos(w + elements.nu) + Math.cos(elements.Om) * Math.sin(w + elements.nu) * Math.cos(elements.i));
-    Z = r * (Math.sin(elements.i) * Math.sin(w + elements.nu));
+    let nu = 2 * Math.atan2(Math.sqrt(1 + elements.e) * Math.sin(E/2), Math.sqrt(1 - elements.e) * Math.cos(E/2));
+
+    r = elements.a * (1 - elements.e**2) / (1 + elements.e * Math.cos(nu));
+
+    X = r * (Math.cos(elements.Om) * Math.cos(nu) - Math.sin(elements.Om) * Math.sin(nu) * Math.cos(elements.i));
+    Y = r * (Math.sin(elements.Om) * Math.cos(nu) + Math.cos(elements.Om) * Math.sin(nu) * Math.cos(elements.i));
+    Z = r * (Math.sin(elements.i) * Math.sin(nu));
 
     return [X, Y, Z];
 }
@@ -38,8 +50,8 @@ class TextLabel extends PIXI.Container{
 
 // Orbital Elements
 class Elements {
-    constructor(nu, a, e, i, Om, Tp, period) {
-        this.nu = nu;
+    constructor(M, a, e, i, Om, Tp, period) {
+        this.M = M;
         this.a = a;
         this.e = e;
         this.i = i;
@@ -322,6 +334,28 @@ class SystemMap {
             marker.addChild(coordLabel);
             this._markers[i] = marker;
             this.container.addChild(this._markers[i]);
+
+            // Draw orbits
+            let a = this.bodies[i].elements.a;
+            let e = this.bodies[i].elements.e;
+            let b = Math.sqrt(a**2 - e**2);
+            let Om = this.bodies[i].elements.Om;
+            let inc = this.bodies[i].elements.i;
+
+            let a_pix = a * Math.cos(inc) / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
+            let b_pix = b / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
+            let e_pix = e * Math.cos(inc) / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
+
+            let centerPos = this.posToPix([0, 0])
+
+            let containerOrbit = new PIXI.Container();
+            let graphicsOrbits = new PIXI.Graphics();
+            graphicsOrbits.lineStyle(1, 0x333333);
+            graphicsOrbits.drawEllipse(0, 0, a_pix, b_pix);
+            containerOrbit.addChild(graphicsOrbits);
+            //containerOrbit.rotation = -Om / DEG_TO_RAD;
+            containerOrbit.position = new PIXI.Point(centerPos[0], centerPos[1]);
+            this.container.addChild(containerOrbit);
         }
     }
 
@@ -428,6 +462,7 @@ class SystemMap {
             this._markers[i].children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
+
         }
 
         // Draw zones.

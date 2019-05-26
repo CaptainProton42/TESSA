@@ -10,16 +10,18 @@
             <button onclick="sendParams()" id="submit_button">Submit</button>
 		</div>
 		<div id="plotter">
-			Start: <select id="select_start"></select>
+			Start: <input type="checkbox" id="input_start_current_pos">Current Position</input> <select id="select_start"></select>
 			Destination: <select id="select_dest"></select>
 			Burn: <input type="text" id="input_acc"></select>
 			<button onclick="plotRoute()" id="plot_button">Plot Route</button>
 		</div>
 		<div id="ship">
-			Position: <input type="text" id="input_ship_pos_x"> <input type="text" id="input_ship_pos_y"> <input type="text" id="input_ship_pos_z"> <button onclick="setShipPos()" id="ship_pos_button">Set Ship Posiiton</button> <br>
+			Position: <input type="text" id="input_ship_pos_x"> <input type="text" id="input_ship_pos_y"> <input type="text" id="input_ship_pos_z">
+			<button onclick="setShipPos()" id="ship_pos_button">Set Ship Posiiton</button> <br>
 			Orbit: <select id="select_ship_orbit"></select> <button onclick="setShipOrbit()" id="ship_orbit_button">Set Ship Orbit</button> <br>
 			Target: <select id="select_ship_target"></select> <button onClick="setShipTarget()" id="ship_target_button">Set Ship Target</button> <br>
-			Target Position: <input type="text" id="input_ship_target_pos_x"></input> <input type="text" id="input_ship_target_pos_y"></input> <input type="text" id="input_ship_target_pos_z"></input> <button onclick="setShipTargetPos()" id="ship_target_pos_button">Target Position</button> <br>
+			Target Position: <input type="text" id="input_ship_target_pos_x"></input> <input type="text" id="input_ship_target_pos_y"></input> <input type="text" id="input_ship_target_pos_z"></input>
+			<button onclick="setShipTargetPos()" id="ship_target_pos_button">Target Position</button> <br>
 		</div>
 		<div id="overlay">Waiting for connection...</div>
 	</body>

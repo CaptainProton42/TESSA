@@ -103,7 +103,12 @@ document.body.onmousemove = function (e) {
 bcCommands.onmessage = function (ev) {
   console.log(ev.data)
   if (ev.data.cmd == "plot") {
-    var route = plotRoute(map.bodies[ev.data.start].pos3D, map.bodies[ev.data.dest], ev.data.acc);
+    var route
+    if (ev.data.start == -1) {
+      route = plotRoute(map.ship.pos3D, map.bodies[ev.data.dest], ev.data.acc);
+    } else {
+      route = plotRoute(map.bodies[ev.data.start].pos3D, map.bodies[ev.data.dest], ev.data.acc);
+    }
     map.addRoute(route);
     map.ship.target = map.bodies[ev.data.dest];
     console.log(route);
