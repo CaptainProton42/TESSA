@@ -92,6 +92,7 @@ class StellarBody {
 class Body {
     constructor(pos3D) {
         this.pos3D = pos3D;
+        this.name = "Deep Space"
     }
 
     get pos2D() {
@@ -115,6 +116,21 @@ class Ship {
         this._pos3D = pos3D;
         this.target = null;
         this.orbitingBody = null;
+        this.statusBox = this.box = new ShipStatusBox(this);
+
+        this.container = new PIXI.Container();
+        let graphics = new PIXI.Graphics();
+        graphics.beginFill(0xf49e42);
+        graphics.drawCircle(0, 0, 10);
+        this.container.addChild(graphics);
+        this.container.addChild(this.statusBox.container);
+        this.statusBox.container.position = new PIXI.Point(10, 10);
+
+        this.targetMarker = new PIXI.Container();
+        let graphicsTarget = new PIXI.Graphics();
+        graphicsTarget.lineStyle(1, 0xf49e42);
+        graphicsTarget.drawCircle(0, 0, 12);
+        this.targetMarker.addChild(graphicsTarget);
     }
 
     get pos2D() {
@@ -163,37 +179,42 @@ class Ship {
         }
     }
 
-    draw() {
-        let graphics = new PIXI.Graphics();
-        graphics.beginFill(0xffffff);
-        graphics.drawCircle(0, 0, 10);
+    updatePosition(map) {
+        let pix = map.posToPix(this.pos2D);
+        this.container.position = new PIXI.Point(pix[0], pix[1]);
+    }
 
+    updateTargetMarker(map) {
+        if (this.target) {
+            if (!this.targetMarker.visible) {
+                this.targetMarker.visible = true;
+            }
+            let pix = map.posToPix(this.target.pos2D);
+            this.targetMarker.position = new PIXI.Point(pix[0], pix[1]);
+        } else if (this.targetMarker.visible) {
+            this.targetMarker.visible = false;
+        }
     }
 }
 
 // This class decribes a status box which can be displayed containing important information about the shiü.
 class ShipStatusBox {
-    constructor(ship) {
-        this.ship = ship;
+    constructor(parent) {
+        this.parent = parent;
         this.container = new PIXI.Container();
         this.draw();
     }
 
-    updatePosition(map) {
-        let pix = map.posToPix(this.ship.pos2D);
-        this.container.position = new PIXI.Point(pix[0], pix[1]);
-    }
-
     updateStatus() {
-        let labelPosition = this.container.children[2];
-        let labelTargetDist = this.container.children[3];
-        let labelComDelay = this.container.children[4];
-        let coord = this.ship.pos3D;
-        labelPosition.text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
+        let coord = this.parent.pos3D;
+        this.container.children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                              (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                              (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
-        labelTargetDist.text = 'DIST//' + this.ship.distanceToTarget.toFixed(2).padStart(5, '0');
-        labelComDelay.text = 'COM//' + (this.ship.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
+        if (this.parent.target) {
+            this.container.children[3].text = 'TARGET//' + this.parent.target.name;
+        }
+        this.container.children[4].text = 'DIST//' + this.parent.distanceToTarget.toFixed(2).padStart(5, '0');
+        this.container.children[5].text = 'COM//' + (this.parent.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
     }
 
     draw() {
@@ -206,13 +227,15 @@ class ShipStatusBox {
             .lineTo(170, 250)
             .lineTo(0, 250)
             .lineTo(0, 0)
-        let labelTitle = new TextLabel(this.ship.name, new PIXI.Point(1, 1), 20);
+        let labelTitle = new TextLabel(this.parent.name, new PIXI.Point(1, 1), 20);
         let labelPosition = new TextLabel("+00.00//+00.00//+00.00", new PIXI.Point(1, 25), 15);
-        let labelTargetDist = new TextLabel("DIST//00.00", new PIXI.Point(1, 50), 15);
-        let labelComDelay = new TextLabel("COM//00.00//HOURS", new PIXI.Point(1, 75), 15);
+        let labelTargetName = new TextLabel("TARGET//???", new PIXI.Point(1, 50), 15)
+        let labelTargetDist = new TextLabel("DIST//00.00", new PIXI.Point(1, 70), 15);
+        let labelComDelay = new TextLabel("COM//00.00//HOURS", new PIXI.Point(1, 90), 15);
         this.container.addChild(graphics);
         this.container.addChild(labelTitle);
         this.container.addChild(labelPosition);
+        this.container.addChild(labelTargetName);
         this.container.addChild(labelTargetDist);
         this.container.addChild(labelComDelay);
     }
@@ -239,8 +262,8 @@ class SystemMap {
 
         // DEBUG
         this.ship = new Ship("Rocinante", [4, 5, 0]);
-        this.box = new ShipStatusBox(this.ship);
-        this.container.addChild(this.box.container);
+        this.container.addChild(this.ship.container);
+        this.container.addChild(this.ship.targetMarker)
     }
 
     // Setter (keep aspect ratio and center)
@@ -417,8 +440,6 @@ class SystemMap {
         // Draw routes.
         for (var i = 0; i < this._routes.length; i++)
         {
-            this.ship.target = new Body(this._routes[i].destinationCoordinate);
-
             let startPix = this.posToPix(this._routes[i].startCoordinate2D);
             let destPix = this.posToPix(this._routes[i].destinationCoordinate2D);
 
@@ -435,11 +456,13 @@ class SystemMap {
             map.ship.pos3D = this._routes[i].get_pos();
 
             if (this._routes[i].destinationReached) {
+                this.ship.enterOrbit(this._routes[i].destination)
                 this.deleteRoute(i);
             }
         }
 
-        this.box.updatePosition(this);
-        this.box.updateStatus();
+        this.ship.updatePosition(this);
+        this.ship.updateTargetMarker(this);
+        this.ship.statusBox.updateStatus();
     }
 }

@@ -105,12 +105,18 @@ bcCommands.onmessage = function (ev) {
   if (ev.data.cmd == "plot") {
     var route = plotRoute(map.bodies[ev.data.start].pos3D, map.bodies[ev.data.dest], ev.data.acc);
     map.addRoute(route);
+    map.ship.target = map.bodies[ev.data.dest];
     console.log(route);
   } else if (ev.data.cmd == "set_ship_pos") {
     map.ship.leaveOrbit()
     map.ship.pos3D = [ev.data.pos_x, ev.data.pos_y, ev.data.pos_z];
   } else if (ev.data.cmd == "set_ship_orbit") {
     map.ship.enterOrbit(map.bodies[ev.data.body]);
+  } else if (ev.data.cmd == "set_ship_target_body") {
+    map.ship.target = map.bodies[ev.data.target];
+  } else if (ev.data.cmd == "set_ship_target_pos") {
+    let target = new Body([ev.data.pos_x, ev.data.pos_y, ev.data.pos_z]);
+    map.ship.target = target;
   }
 }
 

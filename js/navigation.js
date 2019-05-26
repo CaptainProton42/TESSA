@@ -1,5 +1,6 @@
 class Route {
-    constructor(startCoordinate, destinationCoordinate, travelDisctance, travelTime, startTime) {
+    constructor(destination, startCoordinate, destinationCoordinate, travelDisctance, travelTime, startTime) {
+        this.destination = destination;
         this.startCoordinate = startCoordinate;
         this.destinationCoordinate = destinationCoordinate;
         this.travelDisctance = travelDisctance;
@@ -62,7 +63,7 @@ function plotRoute(start_coord, dest_body, acc) {
 
         if (Math.abs(t_body - t_ship) < 1)
         {
-            return new Route(start_coord, dest_coord, s_ship, t_ship, CUR_JD);
+            return new Route(dest_body, start_coord, dest_coord, s_ship, t_ship, CUR_JD);
         }
     }
 }

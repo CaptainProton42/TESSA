@@ -36,6 +36,7 @@ bcMetrics.onmessage = function (ev) {
     var select_start = document.getElementById("select_start");
     var select_dest = document.getElementById("select_dest");
     var select_ship_orbit = document.getElementById("select_ship_orbit");
+    var select_ship_target = document.getElementById("select_ship_target");
 
     for (var i = 0; i < ev.data.length; i++ )
     {
@@ -60,6 +61,12 @@ bcMetrics.onmessage = function (ev) {
             select_ship_orbit.appendChild(opt);
         } else {
             select_ship_orbit.children[i] = opt;
+        }
+
+        if (i >= select_ship_target.children.length) {
+            select_ship_target.appendChild(opt);
+        } else {
+            select_ship_target.children[i] = opt;
         }
     }
   }
@@ -121,4 +128,36 @@ function setShipOrbit() {
     }
 
     bcCommands.postMessage(msg);
+}
+
+function setShipTarget() {
+    var select_ship_target = document.getElementById("select_ship_target");
+
+    var target = select_ship_target.selectedIndex;
+
+    var msg = {
+        cmd: "set_ship_target_body",
+        target: target
+    }
+
+    bcCommands.postMessage(msg);
+}
+
+function setShipTargetPos() {
+    var input_ship_target_pos_x = document.getElementById("input_ship_target_pos_x");
+    var input_ship_target_pos_y = document.getElementById("input_ship_target_pos_y");
+    var input_ship_target_pos_z = document.getElementById("input_ship_target_pos_z");
+
+    var posX = parseFloat(input_ship_target_pos_x.value);
+    var posY = parseFloat(input_ship_target_pos_y.value);
+    var posZ = parseFloat(input_ship_target_pos_z.value);
+
+    var msg = {
+        cmd: "set_ship_target_pos",
+        pos_x: posX,
+        pos_y: posY,
+        pos_z: posZ
+    }
+
+    bcCommands.postMessage(msg);    
 }
