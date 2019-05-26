@@ -14,13 +14,6 @@ function elem_to_cart(elements, t) {
     return [X, Y, Z];
 }
 
-// Converts a position in map coordinates to a pixel position on screen
-function pos_to_pix(pos, map) {
-    var xpix =  map.xpos[0] +  ( pos[0] - map._xlims[0] ) * (map.xpos[1] - map.xpos[0]) / (map._xlims[1] - map._xlims[0]);
-    var ypix =  map.ypos[1] - ( pos[1] - map._ylims[0] ) * (map.ypos[1] - map.ypos[0]) / (map._ylims[1] - map._ylims[0]);
-    return [xpix, ypix]
-}
-
 class TextLabel extends PIXI.Container{
     constructor(text = "", position = new PIXI.Point(0, 0), fontsize=20, color = 0xffffff) {
         super();
@@ -75,15 +68,34 @@ class StellarBody {
         this.type = type;
     }
 
-    // Returns only the X and Y coordinates for map placement.
-    getMapPos(t) {
+    get pos2D() {
+        return this.getPos2DAt(CUR_JD);
+    }
+
+    get pos3D() {
+        return this.getPos3DAt(CUR_JD);
+    }
+
+    // Returns only the X and Y coordinates for map placement at a certain time.
+    getPos2DAt(t) {
         var coord = elem_to_cart(this.elements, t);
         return [coord[0], coord[1]];
     }
 
     // Returns position in three dimensional space at julian date t.
-    getPos(t) {
+    getPos3DAt(t) {
         return elem_to_cart(this.elements, t);
+    }
+}
+
+// Baseclass?
+class Body {
+    constructor(pos3D) {
+        this.pos3D = pos3D;
+    }
+
+    get pos2D() {
+        return [this.pos3D[0], this.pos3D[1]];
     }
 }
 
@@ -93,6 +105,116 @@ class Zone {
         this.center = center;
         this.r1 = r1;
         this.r2 = r2;
+    }
+}
+
+// The players ship.
+class Ship {
+    constructor(name, pos3D) {
+        this.name = name;
+        this._pos3D = pos3D;
+        this.target = null;
+        this.orbitingBody = null;
+    }
+
+    get pos2D() {
+        return [this.pos3D[0], this.pos3D[1]]
+    }
+
+    get pos3D() {
+        if (this.orbitingBody) {
+            return this.orbitingBody.pos3D;
+        } else {
+            return this._pos3D;
+        }
+    }
+
+    set pos3D(pos3D) {
+        if (this.orbitingBody) {
+            this.orbitingBody = null;
+        }
+        this._pos3D = pos3D;
+    }
+
+    get distanceToTarget() {
+        if (this.target) {
+            return Math.sqrt((this.pos3D[0] - this.target.pos3D[0])**2 + (this.pos3D[1] - this.target.pos3D[1])**2 + (this.pos3D[2] - this.target.pos3D[2])**2);
+        } else {
+            return -1;
+        }
+    }
+
+    get twoWayTransmissionDelay() {
+        if (this.target) {
+            return 2 * this.distanceToTarget / LIGHTSPEED;
+        } else {
+            return -1;
+        }
+    }
+
+    enterOrbit(body) {
+        this.orbitingBody = body;
+    }
+
+    leaveOrbit() {
+        if (this.orbitingBody) {
+            this._pos3D = this.orbitingBody.pos3D;
+            this.orbitingBody = null;
+        }
+    }
+
+    draw() {
+        let graphics = new PIXI.Graphics();
+        graphics.beginFill(0xffffff);
+        graphics.drawCircle(0, 0, 10);
+
+    }
+}
+
+// This class decribes a status box which can be displayed containing important information about the shiü.
+class ShipStatusBox {
+    constructor(ship) {
+        this.ship = ship;
+        this.container = new PIXI.Container();
+        this.draw();
+    }
+
+    updatePosition(map) {
+        let pix = map.posToPix(this.ship.pos2D);
+        this.container.position = new PIXI.Point(pix[0], pix[1]);
+    }
+
+    updateStatus() {
+        let labelPosition = this.container.children[2];
+        let labelTargetDist = this.container.children[3];
+        let labelComDelay = this.container.children[4];
+        let coord = this.ship.pos3D;
+        labelPosition.text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
+                             (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
+                             (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
+        labelTargetDist.text = 'DIST//' + this.ship.distanceToTarget.toFixed(2).padStart(5, '0');
+        labelComDelay.text = 'COM//' + (this.ship.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
+    }
+
+    draw() {
+        var graphics = new PIXI.Graphics();
+        graphics.beginFill(0x03333)
+        graphics.lineStyle(1, 0xffffff)
+            .moveTo(0, 0)
+            .lineTo(160, 0)
+            .lineTo(170, 10)
+            .lineTo(170, 250)
+            .lineTo(0, 250)
+            .lineTo(0, 0)
+        let labelTitle = new TextLabel(this.ship.name, new PIXI.Point(1, 1), 20);
+        let labelPosition = new TextLabel("+00.00//+00.00//+00.00", new PIXI.Point(1, 25), 15);
+        let labelTargetDist = new TextLabel("DIST//00.00", new PIXI.Point(1, 50), 15);
+        let labelComDelay = new TextLabel("COM//00.00//HOURS", new PIXI.Point(1, 75), 15);
+        this.container.addChild(graphics);
+        this.container.addChild(labelTitle);
+        this.container.addChild(labelPosition);
+        this.container.addChild(labelTargetDist);
+        this.container.addChild(labelComDelay);
     }
 }
 
@@ -114,6 +236,11 @@ class SystemMap {
         this._labels = new PIXI.Container();
         
         this.container = container;
+
+        // DEBUG
+        this.ship = new Ship("Rocinante", [4, 5, 0]);
+        this.box = new ShipStatusBox(this.ship);
+        this.container.addChild(this.box.container);
     }
 
     // Setter (keep aspect ratio and center)
@@ -198,6 +325,12 @@ class SystemMap {
         return this._bodies;
     }
 
+    posToPix(pos) {
+        var xpix =  this.xpos[0] +  ( pos[0] - this._xlims[0] ) * (this.xpos[1] - this.xpos[0]) / (this._xlims[1] - this._xlims[0]);
+        var ypix =  this.ypos[1] - ( pos[1] - this._ylims[0] ) * (this.ypos[1] - this.ypos[0]) / (this._ylims[1] - this._ylims[0]);
+        return [xpix, ypix]
+    }
+
     addRoute(route) {
         this._routes.push(route);
         let routeMarker = new PIXI.Container();
@@ -266,9 +399,9 @@ class SystemMap {
         // Draw bodies.
         for (var i = 0; i < this._markers.length; i++)
         {
-            let pix = pos_to_pix(this._bodies[i].getMapPos(CUR_JD), map);
+            let pix = this.posToPix(this._bodies[i].getPos2DAt(CUR_JD));
             this._markers[i].position = new PIXI.Point(pix[0], pix[1]);
-            let coord = this.bodies[i].getPos(CUR_JD);
+            let coord = this.bodies[i].getPos3DAt(CUR_JD);
             this._markers[i].children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
@@ -277,29 +410,36 @@ class SystemMap {
         // Draw zones.
         for (var i = 0; i < this._zoneMarkers.length; i++)
         {
-            let pix = pos_to_pix(this._zones[i].center, this);          
+            let pix = this.posToPix(this._zones[i].center);        
             this._zoneMarkers[i].position = new PIXI.Point(pix[0], pix[1]);                      
         }
 
         // Draw routes.
         for (var i = 0; i < this._routes.length; i++)
         {
-            let start_pix = pos_to_pix(this._routes[i].startCoordinate2D, this);
-            let dest_pix = pos_to_pix(this._routes[i].destinationCoordinate2D, this);
+            this.ship.target = new Body(this._routes[i].destinationCoordinate);
+
+            let startPix = this.posToPix(this._routes[i].startCoordinate2D);
+            let destPix = this.posToPix(this._routes[i].destinationCoordinate2D);
 
             var graphics =  this._routeMarkers[i].children[0]
             graphics.clear()
 
             graphics.lineStyle(2, 0xffffff)
-                .moveTo(start_pix[0], start_pix[1])
-                .lineTo(dest_pix[0], dest_pix[1]);
+                .moveTo(startPix[0], startPix[1])
+                .lineTo(destPix[0], destPix[1]);
 
-            let starship_pos = pos_to_pix([this._routes[i].get_pos()[0], this._routes[i].get_pos()[1]], this);
+            let starship_pos = this.posToPix([this._routes[i].get_pos()[0], this._routes[i].get_pos()[1]]);
             graphics.drawCircle(starship_pos[0], starship_pos[1], 10);
+
+            map.ship.pos3D = this._routes[i].get_pos();
 
             if (this._routes[i].destinationReached) {
                 this.deleteRoute(i);
             }
         }
+
+        this.box.updatePosition(this);
+        this.box.updateStatus();
     }
 }

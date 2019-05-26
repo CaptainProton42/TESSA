@@ -6,6 +6,13 @@ var timeout = 30;
 
 var eventTimeout = new Event('timeout');
 
+var select_start = document.getElementById("select_start");
+var select_dest = document.getElementById("select_dest");
+var select_ship_orbit = document.getElementById("select_ship_orbit");
+var input_acc = document.getElementById("input_acc");
+var input_ship_pos_x = document.getElementById("input_ship_pos_x");
+var input_ship_pos_y = document.getElementById("input_ship_pos_y");
+
 // Listen for the event.
 addEventListener('timeout', function (e) {
     document.getElementById("overlay").style.display = "block";
@@ -28,6 +35,8 @@ bcMetrics.onmessage = function (ev) {
 
     var select_start = document.getElementById("select_start");
     var select_dest = document.getElementById("select_dest");
+    var select_ship_orbit = document.getElementById("select_ship_orbit");
+
     for (var i = 0; i < ev.data.length; i++ )
     {
         var opt = document.createElement('option');
@@ -46,6 +55,12 @@ bcMetrics.onmessage = function (ev) {
         } else {
             select_dest.children[i] = opt;
         }
+
+        if (i >= select_ship_orbit.children.length) {
+            select_ship_orbit.appendChild(opt);
+        } else {
+            select_ship_orbit.children[i] = opt;
+        }
     }
   }
 
@@ -57,11 +72,11 @@ function sendParams() {
 }
 
 function plotRoute()
-{
+{  
     var select_start = document.getElementById("select_start");
     var select_dest = document.getElementById("select_dest");
     var input_acc = document.getElementById("input_acc");
-    
+
     var start = select_start.selectedIndex;
     var dest = select_dest.selectedIndex;
     var acc = parseFloat(input_acc.value);
@@ -71,6 +86,38 @@ function plotRoute()
         start: start,
         dest: dest,
         acc: acc
+    }
+
+    bcCommands.postMessage(msg);
+}
+
+function setShipPos() {
+    var input_ship_pos_x = document.getElementById("input_ship_pos_x");
+    var input_ship_pos_y = document.getElementById("input_ship_pos_y");
+    var input_ship_pos_z = document.getElementById("input_ship_pos_z");
+
+    var posX = parseFloat(input_ship_pos_x.value);
+    var posY = parseFloat(input_ship_pos_y.value);
+    var posZ = parseFloat(input_ship_pos_z.value);
+
+    var msg = {
+        cmd: "set_ship_pos",
+        pos_x: posX,
+        pos_y: posY,
+        pos_z: posZ
+    }
+
+    bcCommands.postMessage(msg);
+}
+
+function setShipOrbit() {
+    var select_ship_orbit = document.getElementById("select_ship_orbit");
+
+    var body = select_ship_orbit.selectedIndex;
+
+    var msg = {
+        cmd: "set_ship_orbit",
+        body: body
     }
 
     bcCommands.postMessage(msg);

@@ -16,6 +16,10 @@ bcCommands = new BroadcastChannel("tessa-cmd"); // For gm console commands.
 
 // Layout.
 
+// Constants.
+// Units are: AU, days
+const LIGHTSPEED = 173.1446327;
+
 // Globals.
 var CUR_JD = 2542944.500000;
 var DAYS_PER_SECOND = 1;
@@ -99,9 +103,14 @@ document.body.onmousemove = function (e) {
 bcCommands.onmessage = function (ev) {
   console.log(ev.data)
   if (ev.data.cmd == "plot") {
-    var route = plotRoute(map.bodies[ev.data.start].getPos(CUR_JD), map.bodies[ev.data.dest], ev.data.acc);
+    var route = plotRoute(map.bodies[ev.data.start].pos3D, map.bodies[ev.data.dest], ev.data.acc);
     map.addRoute(route);
     console.log(route);
+  } else if (ev.data.cmd == "set_ship_pos") {
+    map.ship.leaveOrbit()
+    map.ship.pos3D = [ev.data.pos_x, ev.data.pos_y, ev.data.pos_z];
+  } else if (ev.data.cmd == "set_ship_orbit") {
+    map.ship.enterOrbit(map.bodies[ev.data.body]);
   }
 }
 
