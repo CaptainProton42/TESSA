@@ -1,6 +1,6 @@
 function elem_to_cart(elements, t) {
     let delta_t = t - elements.Tp;
-    let M = elements.M + delta_t + 2 * Math.PI * delta_t / elements.period;
+    let M = elements.M + 2 * Math.PI * delta_t / elements.period;
     while (M > 2 * Math.PI) {
         M -= 2 * Math.PI;
     }
@@ -9,7 +9,9 @@ function elem_to_cart(elements, t) {
     var F = E - elements.e * Math.sin(E) - M
     var E = M;
     var j = 0;
-    while (Math.abs(F) > 0.0001 && j < 100) {
+    var epsilon = 0.00001;
+    var maxIt = 100;
+    while (Math.abs(F) > epsilon && j < maxIt) {
         E = E - F/(1 - elements.e * Math.cos(E));
         F = E - elements.e * Math.sin(E) - M;
         j++
@@ -19,8 +21,8 @@ function elem_to_cart(elements, t) {
 
     r = elements.a * (1 - elements.e**2) / (1 + elements.e * Math.cos(nu));
 
-    X = r * (Math.cos(elements.Om) * Math.cos(nu) - Math.sin(elements.Om) * Math.sin(nu) * Math.cos(elements.i));
-    Y = r * (Math.sin(elements.Om) * Math.cos(nu) + Math.cos(elements.Om) * Math.sin(nu) * Math.cos(elements.i));
+    X = r * (Math.cos(elements.Om) * Math.cos(elements.w + nu) - Math.sin(elements.Om) * Math.sin(elements.w + nu) * Math.cos(elements.i));
+    Y = r * (Math.sin(elements.Om) * Math.cos(elements.w + nu) + Math.cos(elements.Om) * Math.sin(elements.w + nu) * Math.cos(elements.i));
     Z = r * (Math.sin(elements.i) * Math.sin(nu));
 
     return [X, Y, Z];
@@ -50,11 +52,12 @@ class TextLabel extends PIXI.Container{
 
 // Orbital Elements
 class Elements {
-    constructor(M, a, e, i, Om, Tp, period) {
+    constructor(M, a, e, i, w, Om, Tp, period) {
         this.M = M;
         this.a = a;
         this.e = e;
         this.i = i;
+        this.w = w;
         this.Om = Om;
         this.Tp = Tp;
         this.period = period;
@@ -65,13 +68,39 @@ class Elements {
 var BodyType = {
     PLANET: 0,
     ASTEROID: 1,
-    STATION: 2,
-    UN: 3,
-    MCRN: 4,
-    OPA: 5,
-    INDEPENDENT: 6,
-    ALIEN: 7
+    STATION: 2
+}
+
+// Faction enum
+var Faction = {
+    UN: 0,
+    MCRN: 1,
+    OPA: 2,
+    INDEPENDENT: 3,
+    ALIEN: 4
 };
+
+class StationBody {
+    constructor(name, faction, pos3D) {
+        this.name = name;
+        this.faction = faction;
+        this.pos3D = pos3D;
+        this.type = BodyType.STATION;
+    }
+
+    get pos2D() {
+        return [this.pos3D[0], this.pos3D[1]];
+    }
+
+    // Dummy für Kompatibilität
+    getPos2DAt(t) {
+        return this.pos2D;
+    }
+
+    getPos3DAt(t) {
+        return this.pos3D;
+    }
+}
 
 class StellarBody {
     constructor(name, elements, type) {
@@ -128,7 +157,8 @@ class Ship {
         this._pos3D = pos3D;
         this.target = null;
         this.orbitingBody = null;
-        this.statusBox = this.box = new ShipStatusBox(this);
+        this.route = null;
+        this.statusBox = new ShipStatusBox(this);
 
         this.container = new PIXI.Container();
         let graphics = new PIXI.Graphics();
@@ -223,10 +253,19 @@ class ShipStatusBox {
                              (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                              (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
         if (this.parent.target) {
-            this.container.children[3].text = 'TARGET//' + this.parent.target.name;
+            this.container.children[3].text = 'TRGT//' + this.parent.target.name;
+            this.container.children[4].text = 'DIST//' + this.parent.distanceToTarget.toFixed(2).padStart(5, '0');
+            this.container.children[5].text = 'COM//' + (this.parent.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
+        } else {
+            this.container.children[3].text = 'TRGT//ERR_NO_DATA';
+            this.container.children[4].text = 'DIST//ERR_NO_DATA';
+            this.container.children[5].text = 'COM//ERR_NO_DATA';
         }
-        this.container.children[4].text = 'DIST//' + this.parent.distanceToTarget.toFixed(2).padStart(5, '0');
-        this.container.children[5].text = 'COM//' + (this.parent.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
+        if (this.parent.route) {
+            this.container.children[6].text = 'ARR//' + (this.parent.route.startTime + this.parent.route.travelTime - CUR_JD).toFixed(2).padStart(5, '0') + '//DAYS';
+        } else {
+            this.container.children[6].text = 'ARR//ERR_NO_DATA';
+        }
     }
 
     draw() {
@@ -244,12 +283,14 @@ class ShipStatusBox {
         let labelTargetName = new TextLabel("TARGET//???", new PIXI.Point(1, 50), 15)
         let labelTargetDist = new TextLabel("DIST//00.00", new PIXI.Point(1, 70), 15);
         let labelComDelay = new TextLabel("COM//00.00//HOURS", new PIXI.Point(1, 90), 15);
+        let labelArrivalIn = new TextLabel("ARR//00.00//DAYS", new PIXI.Point(1,110), 15);
         this.container.addChild(graphics);
         this.container.addChild(labelTitle);
         this.container.addChild(labelPosition);
         this.container.addChild(labelTargetName);
         this.container.addChild(labelTargetDist);
         this.container.addChild(labelComDelay);
+        this.container.addChild(labelArrivalIn);
     }
 }
 
@@ -336,6 +377,7 @@ class SystemMap {
             this.container.addChild(this._markers[i]);
 
             // Draw orbits
+            /*
             let a = this.bodies[i].elements.a;
             let e = this.bodies[i].elements.e;
             let b = Math.sqrt(a**2 - e**2);
@@ -351,11 +393,12 @@ class SystemMap {
             let containerOrbit = new PIXI.Container();
             let graphicsOrbits = new PIXI.Graphics();
             graphicsOrbits.lineStyle(1, 0x333333);
-            graphicsOrbits.drawEllipse(0, 0, a_pix, b_pix);
+            graphicsOrbits.drawEllipse(0, e_pix, a_pix, b_pix);
             containerOrbit.addChild(graphicsOrbits);
-            //containerOrbit.rotation = -Om / DEG_TO_RAD;
+            containerOrbit.rotation = Om + this.bodies[i].elements.w;
             containerOrbit.position = new PIXI.Point(centerPos[0], centerPos[1]);
             this.container.addChild(containerOrbit);
+            */
         }
     }
 
@@ -380,6 +423,15 @@ class SystemMap {
 
     get bodies() {
         return this._bodies;
+    }
+
+    getBodyByName(name) {
+        for (var i in this.bodies) {
+            if (this.bodies[i].name == name) {
+                return this.bodies[i];
+            }
+        }
+        return null;
     }
 
     posToPix(pos) {
@@ -493,6 +545,7 @@ class SystemMap {
             if (this._routes[i].destinationReached) {
                 this.ship.enterOrbit(this._routes[i].destination)
                 this.deleteRoute(i);
+                this.ship.route = null;
             }
         }
 

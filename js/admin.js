@@ -71,11 +71,33 @@ bcMetrics.onmessage = function (ev) {
     }
   }
 
-function sendParams() {
-    var packet = {
-        jd: parseFloat(document.getElementById("jd").value)
+function setTime() {
+    var input_time = document.getElementById("input_time");
+    var msg = {
+        cmd: "set_time",
+        time: parseFloat(input_time.value)
     }
-    bc.postMessage(packet);
+
+    bcCommands.postMessage(msg);
+}
+
+function setTimescale() {
+    var input_timescale = document.getElementById("input_timescale");
+    var msg = {
+        cmd: "set_timescale",
+        timescale: parseFloat(input_timescale.value)
+    }
+
+    bcCommands.postMessage(msg);
+}
+
+function setRealtime() {
+    var msg = {
+        cmd: "set_timescale",
+        timescale: 1 / 86400
+    }
+
+    bcCommands.postMessage(msg);   
 }
 
 function plotRoute()
@@ -166,4 +188,23 @@ function setShipTargetPos() {
     }
 
     bcCommands.postMessage(msg);    
+}
+
+function setTychoPos() {
+    var input_tycho_pos_x = document.getElementById("input_tycho_pos_x");
+    var input_tycho_pos_y = document.getElementById("input_tycho_pos_y");
+    var input_tycho_pos_z = document.getElementById("input_tycho_pos_z");
+
+    var posX = parseFloat(input_tycho_pos_x.value);
+    var posY = parseFloat(input_tycho_pos_y.value);
+    var posZ = parseFloat(input_tycho_pos_z.value);
+
+    var msg = {
+        cmd: "set_tycho_pos",
+        pos_x: posX,
+        pos_y: posY,
+        pos_z: posZ
+    }
+
+    bcCommands.postMessage(msg);
 }

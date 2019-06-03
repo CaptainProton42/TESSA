@@ -62,7 +62,7 @@ var mapcontainer = new PIXI.Container();
 map = new SystemMap(0, 75, window.innerWidth, window.innerHeight, mapcontainer);
 map.xlims = [-10, 10];
 map.bodies = [Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune,
-              Ceres];
+              Ceres, Tycho];
 
 belt = new Zone("Belt", [0, 0], 2.0, 3.4);
 map.zones = [belt];
@@ -110,8 +110,8 @@ bcCommands.onmessage = function (ev) {
       route = plotRoute(map.bodies[ev.data.start].pos3D, map.bodies[ev.data.dest], ev.data.acc);
     }
     map.addRoute(route);
+    map.ship.route = route;
     map.ship.target = map.bodies[ev.data.dest];
-    console.log(route);
   } else if (ev.data.cmd == "set_ship_pos") {
     map.ship.leaveOrbit()
     map.ship.pos3D = [ev.data.pos_x, ev.data.pos_y, ev.data.pos_z];
@@ -122,6 +122,13 @@ bcCommands.onmessage = function (ev) {
   } else if (ev.data.cmd == "set_ship_target_pos") {
     let target = new Body([ev.data.pos_x, ev.data.pos_y, ev.data.pos_z]);
     map.ship.target = target;
+  } else if (ev.data.cmd == "set_time") {
+    CUR_JD = ev.data.time;
+  } else if (ev.data.cmd == "set_timescale") {
+    DAYS_PER_SECOND = ev.data.timescale;
+  } else if (ev.data.cmd == "set_tycho_pos") {
+    let tycho = map.getBodyByName("Tycho Station");
+    tycho.pos3D = [ev.data.pos_x, ev.data.pos_y, ev.data.pos_z];
   }
 }
 

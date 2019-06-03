@@ -5,9 +5,9 @@
 	</head>
 	<body>
         <script src="js/admin.js"></script>
-        <div id="input">
-            Time (JD): <input type="text" id="jd"><br>
-            <button onclick="sendParams()" id="submit_button">Submit</button>
+        <div id="time">
+			Time (JD): <input type="text" id="input_time"> <button onclick="setTime()" id="set_time_button">Set Time</button> <br>
+			Days per Second: <input type="text", id="input_timescale"> <button onclick="setTimescale()" id="set_timescale_button">Set Timescale</button> <button onclick="setRealtime()" id="set_realtime_button">Set Realtime</button><input<br>
 		</div>
 		<div id="plotter">
 			Start: <input type="checkbox" id="input_start_current_pos">Current Position</input> <select id="select_start"></select>
@@ -22,6 +22,10 @@
 			Target: <select id="select_ship_target"></select> <button onClick="setShipTarget()" id="ship_target_button">Set Ship Target</button> <br>
 			Target Position: <input type="text" id="input_ship_target_pos_x"></input> <input type="text" id="input_ship_target_pos_y"></input> <input type="text" id="input_ship_target_pos_z"></input>
 			<button onclick="setShipTargetPos()" id="ship_target_pos_button">Target Position</button> <br>
+		</div>
+		<div id="tycho">
+			Tycho Position: <input type="text" id="input_tycho_pos_x"> <input type="text" id="input_tycho_pos_y"> <input type="text" id="input_tycho_pos_z">
+			<button onclick="setTychoPos()" id="tycho_pos_button">Set Tycho Posiiton</button> <br>
 		</div>
 		<div id="overlay">Waiting for connection...</div>
 	</body>
