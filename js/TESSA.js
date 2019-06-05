@@ -61,14 +61,15 @@ menubar.addChild(JDlabel);
 var mapcontainer = new PIXI.Container();
 map = new SystemMap(0, 75, window.innerWidth, window.innerHeight, mapcontainer);
 map.xlims = [-10, 10];
-map.bodies = [Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune,
-              Ceres, Tycho];
 
 belt = new Zone("Belt", [0, 0], 2.0, 3.4);
 map.zones = [belt];
 
-app.stage.addChild(menubar);
+map.bodies = [Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune,
+  Ceres, Tycho];
+
 app.stage.addChild(mapcontainer);
+app.stage.addChild(menubar);
 
 
 //Add the canvas that Pixi automatically created for you to the HTML document
@@ -129,6 +130,8 @@ bcCommands.onmessage = function (ev) {
   } else if (ev.data.cmd == "set_tycho_pos") {
     let tycho = map.getBodyByName("Tycho Station");
     tycho.pos3D = [ev.data.pos_x, ev.data.pos_y, ev.data.pos_z];
+  } else if (ev.data.cmd == "set_ship_name") {
+    map.ship.name = ev.data.name;
   }
 }
 

@@ -249,12 +249,13 @@ class ShipStatusBox {
 
     updateStatus() {
         let coord = this.parent.pos3D;
+        this.container.children[1].text = this.parent.name;
         this.container.children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                              (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                              (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
         if (this.parent.target) {
             this.container.children[3].text = 'TRGT//' + this.parent.target.name;
-            this.container.children[4].text = 'DIST//' + this.parent.distanceToTarget.toFixed(2).padStart(5, '0');
+            this.container.children[4].text = 'DIST//' + this.parent.distanceToTarget.toFixed(2).padStart(5, '0') + '//AU';
             this.container.children[5].text = 'COM//' + (this.parent.twoWayTransmissionDelay * 24).toFixed(2).padStart(5, '0') + '//HOURS';
         } else {
             this.container.children[3].text = 'TRGT//ERR_NO_DATA';
@@ -275,8 +276,8 @@ class ShipStatusBox {
             .moveTo(0, 0)
             .lineTo(160, 0)
             .lineTo(170, 10)
-            .lineTo(170, 250)
-            .lineTo(0, 250)
+            .lineTo(170, 130)
+            .lineTo(0, 130)
             .lineTo(0, 0)
         let labelTitle = new TextLabel(this.parent.name, new PIXI.Point(1, 1), 20);
         let labelPosition = new TextLabel("+00.00//+00.00//+00.00", new PIXI.Point(1, 25), 15);
@@ -306,12 +307,17 @@ class SystemMap {
         this._routes = [];
         // Objects.
         this._markers = [];
+        this._orbitMarkers = [];
         this._zoneMarkers = [];
         this._routeMarkers = [];
         this._grid = new PIXI.Container();
         this._labels = new PIXI.Container();
         
         this.container = container;
+
+        let graphics = new PIXI.Graphics();
+        this._grid.addChild(graphics);
+        this.container.addChild(this._grid);
 
         // DEBUG
         this.ship = new Ship("Rocinante", [4, 5, 0]);
@@ -374,31 +380,13 @@ class SystemMap {
             marker.addChild(label);
             marker.addChild(coordLabel);
             this._markers[i] = marker;
+
+            let orbitMarker = new PIXI.Container();
+            let orbitGraphics = new PIXI.Graphics();
+            orbitMarker.addChild(orbitGraphics);
+            this._orbitMarkers[i] = orbitMarker;
+            this.container.addChild(this._orbitMarkers[i]);
             this.container.addChild(this._markers[i]);
-
-            // Draw orbits
-            /*
-            let a = this.bodies[i].elements.a;
-            let e = this.bodies[i].elements.e;
-            let b = Math.sqrt(a**2 - e**2);
-            let Om = this.bodies[i].elements.Om;
-            let inc = this.bodies[i].elements.i;
-
-            let a_pix = a * Math.cos(inc) / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
-            let b_pix = b / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
-            let e_pix = e * Math.cos(inc) / (this.xlims[1] - this.xlims[0]) * (this.xpos[1] - this.xpos[0]);
-
-            let centerPos = this.posToPix([0, 0])
-
-            let containerOrbit = new PIXI.Container();
-            let graphicsOrbits = new PIXI.Graphics();
-            graphicsOrbits.lineStyle(1, 0x333333);
-            graphicsOrbits.drawEllipse(0, e_pix, a_pix, b_pix);
-            containerOrbit.addChild(graphicsOrbits);
-            containerOrbit.rotation = Om + this.bodies[i].elements.w;
-            containerOrbit.position = new PIXI.Point(centerPos[0], centerPos[1]);
-            this.container.addChild(containerOrbit);
-            */
         }
     }
 
@@ -458,16 +446,14 @@ class SystemMap {
     // Draws map with contents on container
     draw() {
         // Cleanup.
-        for (var i = this._grid.children.length - 1; i >= 0; i--)
-        {
-           this._grid.children[i].destroy();
-        }
         for (var i = this._labels.children.length - 1; i >= 0; i--)
         {
            this._labels.children[i].destroy();
         }
 
-        var graphics = new PIXI.Graphics();
+        var graphics = this._grid.children[0];
+
+        graphics.clear();
         // Draw grid and labels.
         for (var x = -( this._xlims[0] - Math.floor(this._xlims[0])); x <= this._xlims[1] - this._xlims[0]; x++)
         {
@@ -499,10 +485,6 @@ class SystemMap {
             this._labels.addChild(gText);
         }
 
-        this._grid.addChild(graphics);
-        this._grid.zIndex = -999;
-        this.container.addChild(this._grid);
-        this._labels.zIndex = -999;
         this.container.addChild(this._labels);
 
         // Draw bodies.
@@ -514,7 +496,17 @@ class SystemMap {
             this._markers[i].children[2].text = (coord[0]<0?"-":"+") + Math.abs(coord[0]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[1]<0?"-":"+") + Math.abs(coord[1]).toFixed(2).padStart(5, '0') + '//' +
                                                 (coord[2]<0?"-":"+") + Math.abs(coord[2]).toFixed(2).padStart(5, '0');
-
+            if (this.bodies[i].type == BodyType.PLANET ||this.bodies[i].type == BodyType.ASTEROID) {
+                let graphics = this._orbitMarkers[i].children[0];
+                graphics.clear();
+                let pix = this.posToPix(this.bodies[i].getPos2DAt(0));
+                graphics.lineStyle(1, 0x333333)
+                        .moveTo(pix[0], pix[1]);              
+                for (var w = 0; w <  2 * Math.PI; w += 0.01) {
+                    let pix = this.posToPix(this.bodies[i].getPos2DAt(w / 2 / Math.PI * this.bodies[i].elements.period));
+                    graphics.lineTo(pix[0], pix[1]);
+                }
+            }
         }
 
         // Draw zones.

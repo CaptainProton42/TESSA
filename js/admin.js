@@ -126,6 +126,19 @@ function plotRoute()
     bcCommands.postMessage(msg);
 }
 
+function setShipName() {
+    var input_ship_name = document.getElementById("input_ship_name");
+
+    var shipName = input_ship_name.value;
+
+    var msg = {
+        cmd: "set_ship_name",
+        name: shipName
+    }
+
+    bcCommands.postMessage(msg);
+}
+
 function setShipPos() {
     var input_ship_pos_x = document.getElementById("input_ship_pos_x");
     var input_ship_pos_y = document.getElementById("input_ship_pos_y");
