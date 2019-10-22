@@ -139,6 +139,21 @@ Ceres = new StellarBody(
     type = BodyType.ASTEROID
 )
 
+Lutetia = new StellarBody(
+    name = "21 Lutetia",
+    elements = new Elements(
+        M = 3.044628007307178E+01 * DEG_TO_RAD,
+        a = 2.434867868087972E+00,
+        e = 1.633161300770392E-01,
+        i = 3.064044823585278E+00 * DEG_TO_RAD,
+        w = 2.499473297280119E+02 * DEG_TO_RAD,
+        Om = 8.086583865393450E+01 * DEG_TO_RAD,
+        Tp = 2458661.133740962483,
+        period = 1.387750922348009E+03
+    ),
+    type = BodyType.ASTEROID
+)
+
 Tycho = new StationBody(
     name = "Tycho Station",
     faction = Faction.OPA,
