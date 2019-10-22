@@ -66,7 +66,7 @@ belt = new Zone("Belt", [0, 0], 2.0, 3.4);
 map.zones = [belt];
 
 map.bodies = [Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune,
-  Ceres, Tycho];
+  Ceres, Tycho, Lutetia];
 
 app.stage.addChild(mapcontainer);
 app.stage.addChild(menubar);
